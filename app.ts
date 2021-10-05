@@ -17,6 +17,19 @@ function parseDemoFile(path: string) {
 
     const round = new Round();
 
+    demoFile.entities.on("create", (e) => {
+      // We're only interested in player entities being created.
+      if (!(e.entity instanceof Player)) {
+        return;
+      }
+      const player = {
+        userId: e.entity.userId,
+        name: e.entity.name,
+        steamId: e.entity.steamId,
+      };
+      round.addPlayer(player);
+    });
+
     demoFile.on("end", (e) => {
       if (e.error) {
         console.error("Error during parsing:", e.error);
@@ -25,33 +38,40 @@ function parseDemoFile(path: string) {
       console.log("Finished.");
     });
 
+    demoFile.gameEvents.on("round_start", () => {
+      const currentRound = demoFile.gameRules.roundsPlayed;
+      round.createRoundKey(currentRound);
+    });
+
     demoFile.gameEvents.on("round_end", () => {
-      round.logRoundStats();
-      round.incrementRound();
-      round.resetPlayersArray();
+      // round.logRoundStats();
+      // round.incrementRound();
     });
 
     demoFile.gameEvents.on("hegrenade_detonate", (e) => {
       const player = demoFile.entities.getByUserId(e.userid);
       const grenadeTick = demoFile.currentTick;
-      round.addGrenade("hegrenade", player, grenadeTick);
+      const currentRound = demoFile.gameRules.roundsPlayed;
+      round.addGrenade("hegrenade", currentRound, grenadeTick, player.userId);
     });
     demoFile.gameEvents.on("smokegrenade_detonate", (e) => {
       const player = demoFile.entities.getByUserId(e.userid);
       const grenadeTick = demoFile.currentTick;
-      round.addGrenade("smokegrenade", player, grenadeTick);
+      const currentRound = demoFile.gameRules.roundsPlayed;
+      round.addGrenade("smokegrenade", currentRound, grenadeTick, player.userId);
     });
     demoFile.gameEvents.on("flashbang_detonate", (e) => {
       const player = demoFile.entities.getByUserId(e.userid);
       const grenadeTick = demoFile.currentTick;
-      round.addGrenade("flashbanggrenade", player, grenadeTick);
+      const currentRound = demoFile.gameRules.roundsPlayed;
+      round.addGrenade("flashbanggrenade", currentRound, grenadeTick, player.userId);
     });
-    // demoFile.gameEvents.on("decoy_detonate", (e) => {
-    //   const player = demoFile.entities.getByUserId(e.userid);
-    //   const grenadeTick = demoFile.currentTick;
-    //   round.addPlayer(player);
-    //   round.addGrenade("decoygrenade", player, grenadeTick);
-    // });
+    demoFile.gameEvents.on("decoy_detonate", (e) => {
+      const player = demoFile.entities.getByUserId(e.userid);
+      const grenadeTick = demoFile.currentTick;
+      const currentRound = demoFile.gameRules.roundsPlayed;
+      round.addGrenade("decoygrenade", currentRound , grenadeTick, player.userId);
+    });
 
     // Start parsing the buffer now that we've added our event listeners
     demoFile.parse(buffer);

@@ -21,7 +21,6 @@ export class Round {
   }
 
   resetPlayersArray() {
-      console.log("reset")
     this.players = [];
   }
 

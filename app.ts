@@ -1,81 +1,63 @@
-// tslint:disable:no-console
+const DemoFile = require("demofile");
+const fs = require("fs");
+const chalk = require("chalk");
 
-// This file is an thorough example of how to log player kills,
-// team scores, chat text and server cvar changes from a demo file.
+fs.readFile("demo.dem", (err, buffer) => {
+  const demofile = new DemoFile.DemoFile();
+  const stats = {};
 
-import * as assert from "assert";
-import * as fs from "fs";
-import * as util from "util";
-import { Round } from "./utils";
-import { DemoFile, Player, TeamNumber } from "demofile";
+  function log(grenade, userId) {
+    const player = demofile.players.find((player) => player.userId === userId);
+    const round = demofile.gameRules.roundsPlayed + 1;
 
-function parseDemoFile(path: string) {
-  fs.readFile(path, (err, buffer) => {
-    assert.ifError(err);
-
-    const demoFile = new DemoFile();
-
-    const round = new Round();
-
-    demoFile.entities.on("create", (e) => {
-      // We're only interested in player entities being created.
-      if (!(e.entity instanceof Player)) {
-        return;
-      }
-      const player = {
-        userId: e.entity.userId,
-        name: e.entity.name,
-        steamId: e.entity.steamId,
+    if (stats[player.userId] === undefined) {
+      stats[player.userId] = {
+        name: player.name,
+        steamId: player.steamId,
+        [round]: {
+          Decoy: [],
+          Grenade: [],
+          Molotov: [],
+          Flashbang: [],
+        },
+        ...stats[player.userId],
       };
-      round.addPlayer(player);
-    });
+      stats[player.userId][round][grenade].push(demofile.currentTick);
+    } else {
+      stats[player.userId] = {
+        ...stats[player.userId],
+        [round]: {
+          Decoy: [],
+          Grenade: [],
+          Molotov: [],
+          Flashbang: [],
+        },
+      };
+      stats[player.userId][round][grenade].push(demofile.currentTick);
+    }
+  }
 
-    demoFile.on("end", (e) => {
-      if (e.error) {
-        console.error("Error during parsing:", e.error);
-      }
-
-      console.log("Finished.");
-    });
-
-    demoFile.gameEvents.on("round_start", () => {
-      const currentRound = demoFile.gameRules.roundsPlayed;
-      round.createRoundKey(currentRound);
-    });
-
-    demoFile.gameEvents.on("round_end", () => {
-      // round.logRoundStats();
-      // round.incrementRound();
-    });
-
-    demoFile.gameEvents.on("hegrenade_detonate", (e) => {
-      const player = demoFile.entities.getByUserId(e.userid);
-      const grenadeTick = demoFile.currentTick;
-      const currentRound = demoFile.gameRules.roundsPlayed;
-      round.addGrenade("hegrenade", currentRound, grenadeTick, player.userId);
-    });
-    demoFile.gameEvents.on("smokegrenade_detonate", (e) => {
-      const player = demoFile.entities.getByUserId(e.userid);
-      const grenadeTick = demoFile.currentTick;
-      const currentRound = demoFile.gameRules.roundsPlayed;
-      round.addGrenade("smokegrenade", currentRound, grenadeTick, player.userId);
-    });
-    demoFile.gameEvents.on("flashbang_detonate", (e) => {
-      const player = demoFile.entities.getByUserId(e.userid);
-      const grenadeTick = demoFile.currentTick;
-      const currentRound = demoFile.gameRules.roundsPlayed;
-      round.addGrenade("flashbanggrenade", currentRound, grenadeTick, player.userId);
-    });
-    demoFile.gameEvents.on("decoy_detonate", (e) => {
-      const player = demoFile.entities.getByUserId(e.userid);
-      const grenadeTick = demoFile.currentTick;
-      const currentRound = demoFile.gameRules.roundsPlayed;
-      round.addGrenade("decoygrenade", currentRound , grenadeTick, player.userId);
-    });
-
-    // Start parsing the buffer now that we've added our event listeners
-    demoFile.parse(buffer);
+  demofile.gameEvents.on("decoy_detonate", (event) => {
+    log("Decoy", event.userid);
   });
-}
 
-parseDemoFile(process.argv[2]);
+  demofile.gameEvents.on("hegrenade_detonate", (event) => {
+    log("Grenade", event.userid);
+  });
+
+  demofile.gameEvents.on("molotov_detonate", (event) => {
+    log("Molotov", event.userid);
+  });
+
+  demofile.gameEvents.on("flashbang_detonate", (event) => {
+    log("Flashbang", event.userid);
+  });
+
+  demofile.on("end", () => {
+    Object.values(stats).forEach((entry) => {
+      console.log(entry);
+    });
+  });
+
+  demofile.parse(buffer);
+});

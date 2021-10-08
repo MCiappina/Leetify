@@ -1,7 +1,8 @@
 import { DemoFile, BaseEntity, CInferno, Player } from "demofile";
 const fs = require("fs");
 const chalk = require("chalk");
-var _ = require('lodash');
+const log = console.log;
+var _ = require("lodash");
 
 //const SEED = 1146049601;
 const molotovExplode = 3580951569; // murmurHash2("inferno.start", SEED);
@@ -29,26 +30,59 @@ fs.readFile("demo.dem", (err, buffer) => {
       type: grenade,
     };
 
-    stats[player.steamId].steamId = steamId
+    stats[player.steamId].steamId = steamId;
     stats[player.steamId].utils.push(grenadeStats);
   }
 
   function logEndGame() {
     const statsArray = Object.values(stats);
     statsArray.forEach((player) => {
-      console.log(`${player["name"]} [${player["steamId"]}]`);
+      log(
+        chalk.magenta.bold.italic(`${player["name"]} [${player["steamId"]}]`)
+      );
       const rounds = Object.values(_.groupBy(player["utils"], "round"));
-      rounds.forEach(round => {
-        console.log(`Round ${round[0]["round"]}`)
+      rounds.forEach((round) => {
+        log(
+          chalk.bgRed.bold.underline(`  --- Round ${round[0]["round"]} ---  `)
+        );
         const grenades = _.groupBy(round, "type");
-        for (let key in grenades){
-          console.log(`${key}: ${grenades[key].length}`)
-          grenades[key].forEach(grenade => {console.log(`-- ${grenade.tick}`)})
+        for (let key in grenades) {
+          switch (key) {
+            case "Molotov":
+              log(chalk.red.bold(`${key}: ${grenades[key].length}`).padEnd(30));
+              break;
+            case "Incendiary":
+              log(chalk.red.bold(`${key}: ${grenades[key].length}`).padEnd(30));
+              break;
+            case "Smoke":
+              log(
+                chalk.green.bold(`${key}: ${grenades[key].length}`).padEnd(30)
+              );
+              break;
+            case "Grenade":
+              log(
+                chalk.yellow.bold(`${key}: ${grenades[key].length}`).padEnd(30)
+              );
+              break;
+            case "Flashbang":
+              log(
+                chalk.white.bold(`${key}: ${grenades[key].length}`).padEnd(30)
+              );
+              break;
+            case "Decoy":
+              log(
+                chalk.cyan.bold(`${key}: ${grenades[key].length}`).padEnd(30)
+              );
+              break;
+          }
+          grenades[key].forEach((grenade) => {
+            console.log(`-- ${grenade.tick}`);
+          });
+          console.log("----------------");
         }
-      })
-      
-      console.log("----------")
-    })
+      });
+    });
+    log(chalk.bgRed.bold("        ******* END *******        "));
   }
 
   demofile.gameEvents.on("decoy_detonate", (event) => {
